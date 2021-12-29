@@ -1,0 +1,83 @@
+components:
+  schemas:
+    Chat:
+      properties:
+        first_name:
+          type: string
+        id:
+          type: integer
+        last_name:
+          type: string
+        type:
+          type: string
+        username:
+          type: string
+      type: object
+    From:
+      properties:
+        first_name:
+          type: string
+        id:
+          type: integer
+        is_bot:
+          type: string
+        language_code:
+          type: string
+        last_name:
+          type: string
+        username:
+          type: string
+      type: object
+    In:
+      properties:
+        message:
+          $ref: '#/components/schemas/Message'
+        update_id:
+          type: integer
+      type: object
+    Message:
+      properties:
+        chat:
+          $ref: '#/components/schemas/Chat'
+        date:
+          type: integer
+        from_in:
+          $ref: '#/components/schemas/From'
+        message_id:
+          type: integer
+        text:
+          type: string
+      type: object
+info:
+  description: aiohttp.practice service API
+  title: aiohttp.practice service API
+  version: 0.1.0
+openapi: 3.0.2
+paths:
+  /:
+    post:
+      description: Получение данных от Телеграм.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/In'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/In'
+          description: OK
+        '422':
+          description: Запрос не соответствует схеме.
+  /get:
+    get:
+      description: test method.
+      responses:
+        '200':
+          description: OK
+servers:
+- description: The local API server
+  url: http://localhost:8080/

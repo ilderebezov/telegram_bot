@@ -1,0 +1,23 @@
+service:
+  name: 'aiohttp.practice'
+  version: 0.1.0
+  port: 8080
+client:
+  timeout: 2
+logging:
+  version: 1
+  formatters:
+    console-formatter:
+      format: '%(asctime)s.%(msecs)03d  %(levelname)-8s %(name)-15s %(funcName)-30s %(message)s'
+      datefmt: '%H:%M:%S'
+  handlers:
+    console:
+      class: 'logging.StreamHandler'
+      level: 'DEBUG'
+      stream: 'ext://sys.stdout'
+      formatter: 'console-formatter'
+  root:
+    level: 'DEBUG'
+    handlers:
+      - 'console'
+  disable_existing_loggers: false

@@ -1,0 +1,78 @@
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+before_script:
+  - |
+    export DOCKER_TAG="${CI_COMMIT_SHA:0:8}"
+    export DOCKER_REPO="$CI_REGISTRY_IMAGE"
+    export DOCKER_IMAGE="${DOCKER_REPO}:${DOCKER_TAG}"
+    export DOCKER_CACHE_IMAGE="${DOCKER_REPO}:${CI_COMMIT_REF_NAME}"
+
+Linting:
+  stage: lint
+  image: python:3.9
+  before_script:
+    - pip install wemake-python-styleguide
+  script:
+    - flake8 --config=setup.cfg src
+  only:
+    changes:
+      - src/**/*
+      - pyproject.toml
+      - setup.cfg
+  allow_failure: false
+
+Test:
+  stage: test
+  image: python:3.9
+  before_script:
+    - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+    - export PATH="$HOME/.poetry/bin:$PATH"
+    - poetry config virtualenvs.create false
+    - poetry install -E tests --no-dev
+  script:
+    - export PYTHONPATH="$PWD/src:$PYTHONPATH"
+    - cd src
+    - pytest tests/
+  only:
+    changes:
+      - src/**/*
+      - poetry.lock
+      - ..gitlab-ci.yml
+
+Build:
+  stage: build
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker pull "$DOCKER_CACHE_IMAGE" || docker pull "${DOCKER_REPO}:main" || true
+    - docker pull "$DOCKER_IMAGE" || true
+    - docker build --pull --cache-from "$DOCKER_IMAGE" --cache-from "$DOCKER_CACHE_IMAGE" --cache-from "${DOCKER_REPO}:main" -t "$DOCKER_IMAGE" .
+    - docker push "$DOCKER_IMAGE"
+    - docker tag "$DOCKER_IMAGE" "$DOCKER_CACHE_IMAGE"
+    - docker push "$DOCKER_CACHE_IMAGE"
+  only:
+    - main
+
+Deploy:
+  image: kroniak/ssh-client
+  stage: deploy
+  script:
+    - chmod 400 $SSH_PRIVATE_KEY
+    - ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY "${SSH_USER}@${SSH_HOST}" "docker login -u ${CI_DEPLOY_USER} -p ${CI_DEPLOY_PASSWORD} ${CI_REGISTRY}"
+    - ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY "${SSH_USER}@${SSH_HOST}" "docker rm -f ${CI_PROJECT_NAME}_${SSH_USER} || true"
+    - ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY "${SSH_USER}@${SSH_HOST}" "docker rmi \$(docker images -q ${DOCKER_REPO}) || true"
+    - ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY "${SSH_USER}@${SSH_HOST}"
+      docker container run
+      --name="${CI_PROJECT_NAME}_${SSH_USER}"
+      -p "${HOST_PORT}:${EXPOSE_PORT}"
+      --rm
+      -d $DOCKER_IMAGE
+    - echo "The application is available at the address - http://${SSH_HOST}:${HOST_PORT}"
+  only:
+    - main
