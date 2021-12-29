@@ -41,6 +41,14 @@
     ```shell script
     poetry install
     ```
+3. Зарегистрировать telegram бота и получать его токен. Токен бота прописать в
+   файле: telegram_bot/src/api/status/data.py
+4. Зарегистрироваться на https://ngrok.com/ получить токен для сосдания тоннеля,
+   прописать токен в файле: telegram_bot/src/ngrock.py
+5. Подключение и настройка подключения удаленной базы PostgreSQL производится
+   настройкой файлов конфигурации:
+   а) telegram_bot/src/api/db/const.py - пароль к БД
+   б) telegram_bot/src/api/db/db.py - натстройка соединения к удаленной БД
 
 ## Запуск
 
